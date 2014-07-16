@@ -15,10 +15,8 @@ function Invoke-HTTPPostCommand{
 	$content = Get-Content $FileToUpload
 	$post = ""
 	ForEach($line in $content){
-        if($line -notmatch "\*\*\*"){
-		    $post += "$line`r"
-        }
-	}
+		$post += "$line`r"
+ 	}
 	
     $webRequest = [System.Net.WebRequest]::Create($URL)
     $webRequest.ContentType = "text/plain"
