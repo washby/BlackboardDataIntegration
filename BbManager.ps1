@@ -1,7 +1,8 @@
 Param(
-	[Parameter(Mandatory=$false)]$Upload=$true,
-	[Parameter(Mandatory=$false)]$UsersInputFile="",
-    [Parameter(Mandatory=$false)]$CourseENRLInputFile=""
+	[Parameter(Mandatory=$false)]$Upload=$false,
+	[Parameter(Mandatory=$false)]$InputDir="",
+	[Parameter(Mandatory=$false)]$LogLevel="Verbose",
+	[Parameter(Mandatory=$false)]$FooterCheck=$true
 )
 	
 ####################################################################
@@ -166,6 +167,67 @@ function Execute-CourseEnrollmentSnapshot{
 ####################################################################
 
 
+####################################################################
+Function Execute-UsersFileSetup{
+	Param(
+		[Parameter(Mandatory=$true)]$InputDir,
+		[Parameter(Mandatory=$true)]$Prefix,
+		[Parameter(Mandatory=$false)]$Delimiter="|"
+	)
+	
+	$files = Get-ChildItem -Path $InputDir -Filter "$Prefix*"
+	
+	if ($LogLevel -eq "Verbose"){
+		Write-Log "Files found for processing users:"
+		ForEach($file in $files){
+			Write-Log "`t$($file.name)"
+		}
+	}
+	
+	ForEach($file in $files){
+		$validFooter = $true
+		if($FooterCheck){
+			$validFooter = $Execute-FooterCheck -Files $files
+		}
+	
+}
+####################################################################
+
+
+####################################################################
+Function Execute-FooterCheck{
+	Param(
+		[Parameter(Mandatory=$true)]$File,
+		[Parameter(Mandatory=$false)]$Delimiter="|"
+	)
+	
+	Write-Log "`tChecking Footer on $($file.name)"
+	$lines = Get-Content $file.fullName
+	$cnt = $lines[$lines.length -1].split($delimiter)
+	if( $cnt.length -le 1){
+		Write-Log "`tNot a valid footer format."
+		return $false
+	}else{
+		$cnt = $cnt[1]
+		if( $cnt -ne ($lines.length-2)){
+			Write-Log "`tFooter does not match number of lines"
+			return $false
+		}else{
+			return $true
+		}
+	}
+
+}
+####################################################################
+
+
+Function Write-Log{
+	Param(
+		[Parameter(Mandatory=$false)]$text = ""
+	)
+	
+	Out-File -FilePath $logFile -InputObject "$(Get-Date -Format G)`t$text" -Append
+}
 
 ####################################################################
 ###                       MAIN SECTION							 ###
@@ -173,13 +235,16 @@ $dateStamp = (Get-Date -Format s) -replace "^(.*)T.*$",'$1'
 
 ### Change the value of this variable to the path of the 
 ###  ps1 script file
-	New-Variable -Name RootPath -Value "c:\myCode\powershell\Bb" -Scope Global
+	New-Variable -Name RootPath -Value "c:\BbSnapshot" -Scope Global
 ###
 	New-Variable -Name logFile -Value "$rootPath\Logs\snapshot-controller-log.${dateStamp}.txt" -Scope Global
 ####
 
 Out-File -FilePath $logFile -InputObject "`n$(Get-Date -Format G)`tMESSAGE`tStarting BbManager.ps1" -Append
 write-host "setup files"
+Execute-UsersFileSetup -InputDir "$RootPath\Input" -Prefix "USERS_"
+
+<#
 if ($UsersInputFile -eq ''){
 	$UsersInputFile="$RootPath\Input\USERS.csv"
 }
@@ -197,3 +262,4 @@ write-host "starting courses"
 Execute-CourseEnrollmentSnapshot -InputFile $CourseENRLInputFile -Upload $Upload -UploadURL "https://testbbbeta.hsutx.edu/webapps/bb-data-integration-flatfile-BBLEARN/endpoint/membership/refresh" -SharedUsername "8c036b29-d224-4fca-9b1a-7c4636d85410" -SharedPw 'BbWorld14'
 write-host "Ending courses"
 Out-File -FilePath $logFile -InputObject "$(Get-Date -Format G)`tMESSAGE`Finished BbManager.ps1`n_________________________________________________________" -Append
+#>
